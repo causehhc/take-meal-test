@@ -1,9 +1,13 @@
 # filename: handle.py
 
 import hashlib
-import reply    # 导入回复文件
+import reply  # 导入回复文件
 import receive  # 导入接收文件
 import web
+
+import businessCore
+
+new_CC = businessCore.CusControl()
 
 
 class Handle(object):
@@ -33,7 +37,7 @@ class Handle(object):
         except Exception as Argument:
             return Argument
 
-    def POST(self):    # 新增加的POST函数
+    def POST(self):  # 新增加的POST函数
         try:
             webData = web.data()
             print("Handle Post webdata is ", webData)
@@ -42,8 +46,20 @@ class Handle(object):
             if isinstance(recMsg, receive.Msg):
                 toUser = recMsg.FromUserName
                 fromUser = recMsg.ToUserName
+                if recMsg.MsgType == 'event':
+                    if recMsg.Event == bytes('subscribe', encoding="utf8"):
+                        content = new_CC.check_help()
+                        replyMsg = reply.TextMsg(toUser, fromUser, content)
+                        return replyMsg.send()
                 if recMsg.MsgType == 'text':
-                    content = "sb"  # 这里是回复内容
+                    if recMsg.Content == bytes('1', encoding="utf8"):
+                        content = new_CC.add_cus(toUser)
+                    elif recMsg.Content == bytes('2', encoding="utf8"):
+                        content = new_CC.check_sta(toUser)
+                    elif recMsg.Content == bytes('3', encoding="utf8"):
+                        content = new_CC.check_help()
+                    else:
+                        content = '开发中...'
                     replyMsg = reply.TextMsg(toUser, fromUser, content)
                     return replyMsg.send()
                 if recMsg.MsgType == 'image':
