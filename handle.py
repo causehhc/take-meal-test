@@ -47,11 +47,13 @@ class Handle(object):
                 toUser = recMsg.FromUserName
                 fromUser = recMsg.ToUserName
                 if recMsg.MsgType == 'event':
+                    # 事件：用户订阅
                     if recMsg.Event == bytes('subscribe', encoding="utf8"):
                         content = new_CC.check_help()
                         replyMsg = reply.TextMsg(toUser, fromUser, content)
                         return replyMsg.send()
                 if recMsg.MsgType == 'text':
+                    # 接收文本
                     if recMsg.Content == bytes('1', encoding="utf8"):
                         content = new_CC.add_cus(toUser)
                     elif recMsg.Content == bytes('2', encoding="utf8"):
@@ -63,10 +65,12 @@ class Handle(object):
                     replyMsg = reply.TextMsg(toUser, fromUser, content)
                     return replyMsg.send()
                 if recMsg.MsgType == 'image':
+                    # 接收图片
                     mediaId = recMsg.MediaId
                     replyMsg = reply.ImageMsg(toUser, fromUser, mediaId)
                     return replyMsg.send()
                 else:
+                    # 其他处理
                     return reply.Msg().send()
             else:
                 print("暂且不处理")
