@@ -5,9 +5,9 @@ import reply  # 导入回复文件
 import receive  # 导入接收文件
 import web
 
-import businessCore
+from businessCore import Control
 
-new_CC = businessCore.CusControl()
+ct = Control()
 
 
 class Handle(object):
@@ -49,19 +49,27 @@ class Handle(object):
                 if recMsg.MsgType == 'event':
                     # 事件：用户订阅
                     if recMsg.Event == bytes('subscribe', encoding="utf8"):
-                        content = new_CC.check_help()
+                        content = ct.show_help()
                         replyMsg = reply.TextMsg(toUser, fromUser, content)
                         return replyMsg.send()
                 if recMsg.MsgType == 'text':
                     # 接收文本
                     if recMsg.Content == bytes('1', encoding="utf8"):
-                        content = new_CC.add_cus(toUser)
+                        content = ct.add_server('10')
                     elif recMsg.Content == bytes('2', encoding="utf8"):
-                        content = new_CC.check_sta(toUser)
+                        content = ct.sub_server('10')
                     elif recMsg.Content == bytes('3', encoding="utf8"):
-                        content = new_CC.check_help()
+                        content = ct.add_client('10', toUser)
+                    elif recMsg.Content == bytes('4', encoding="utf8"):
+                        content = ct.sub_client('10')
+                    elif recMsg.Content == bytes('5', encoding="utf8"):
+                        content = ct.sub_client(toUser)
+                    elif recMsg.Content == bytes('6', encoding="utf8"):
+                        content = ct.show_info('10')
+                    elif recMsg.Content == bytes('7', encoding="utf8"):
+                        content = ct.show_info(toUser)
                     else:
-                        content = '开发中...'
+                        content = ct.show_help()
                     replyMsg = reply.TextMsg(toUser, fromUser, content)
                     return replyMsg.send()
                 if recMsg.MsgType == 'image':
