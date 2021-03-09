@@ -1,129 +1,163 @@
+import time
+
+
 class Base:
     def __init__(self):
-        self.ID = None
-        self.permission = None
+        self.id = None  # 唯一识别号
+        self.cl = None  # 分类：1商家 2客户
+
+
+class OrderFrom(Base):
+    def __init__(self):
+        super().__init__()
+        self.serverID = None
+        self.clientID = None
+        self.lastNums = None
+        self.lastTime = None
+        self.beginTime = None
+        self.state = None  # 状态：0无效 1排队 2完成
+
+    def show_info(self):
+        recMsg = ''
+        recMsg += '{}'.format('=' * 8)
+        recMsg += 'orderID:{}\n'.format(self.id)
+        recMsg += 'serverID:{}, clientID:{}, '.format(self.serverID, self.clientID)
+        recMsg += 'lastNums:{}, lastTime:{}, '.format(self.lastNums, self.lastTime)
+        recMsg += 'beginTime:{}, state:{}\n'.format(self.beginTime, self.state)
+        return recMsg
 
 
 class Client(Base):
     def __init__(self):
         super().__init__()
-        self.serverID = None  # 商家店名
-        self.lastNum = None  # 前方还剩
-        self.finishTime = None  # 预计时间
-
-    def show_info(self):
-        recMsg = ''
-        recMsg += '{}\n'.format('='*20)
-        recMsg += 'clientID:{}\n'.format(self.ID)
-        recMsg += 'serverID:{}, LastNum:{}, finish:{}\n'.format(self.serverID, self.lastNum, self.finishTime)
-        return recMsg
+        self.orderList = None
 
 
 class Server(Base):
     def __init__(self):
         super().__init__()
-        self.cList = None
-
-    def add_client(self, client_x):
-        client_x.serverID = self.ID
-        client_x.lastNum = len(self.cList)
-        client_x.finishTime = len(self.cList) * 2 + 1
-        # 将客户添加到队列
-        self.cList.append(client_x)
-
-    def sub_client(self, client_wxid):
-        for i in range(len(self.cList)):
-            if self.cList[i].ID == client_wxid or client_wxid is None:
-                dele_wxid = self.cList[i].ID
-                temp_time = self.cList[i].finishTime
-                self.cList.pop(i)
-                for j in range(i, len(self.cList)):
-                    self.cList[j].lastNum -= 1
-                    self.cList[j].finishTime -= temp_time
-                return dele_wxid
-
-    def show_info(self):
-        recMsg = ''
-        recMsg += '{}\n'.format('=' * 20)
-        recMsg += 'serverID:{}\n'.format(self.ID)
-        recMsg += 'nowList: '
-        for item in self.cList:
-            recMsg += '{} '.format(item.ID)
-        recMsg += '\n'
-        return recMsg
+        self.orderList = None
 
 
 class Control:
     def __init__(self):
-        self.baseHash = {}
-
-    def __sub_base(self, wxid):
-        self.baseHash.pop(wxid)
-
-    def __per_check(self, wxid):
-        return self.baseHash[wxid].permission
+        self.storageHash = {}  # 用于存放稳定数据
+        self.dynamicHash = {}  # 用于存放高刷新率数据
+        self.orderFromRecord = {}  # 用于存放订单流水
 
     def add_server(self, server_wxid):
-        recMsg = ''
         # 初始化一个商家
         server_x = Server()
-        server_x.ID = server_wxid
-        server_x.permission = 1
-        server_x.cList = []
+        server_x.id = server_wxid
+        server_x.cl = 1
+        server_x.orderList = []
 
         # 将商家添加到哈希表
-        self.baseHash[server_wxid] = server_x
+        self.storageHash[server_x.id] = server_x
 
+        # 产生提示信息
         recMsg = "添加商家[{}]成功".format(server_wxid)
         return recMsg
 
     def sub_server(self, server_wxid):
-        recMsg = ''
-        self.__sub_base(server_wxid)
+        # 将商家删除从哈希表
+        self.storageHash.pop(server_wxid)
 
-        recMsg = "添加商家[{}]成功".format(server_wxid)
+        # 产生提示信息
+        recMsg = "删除商家[{}]成功".format(server_wxid)
         return recMsg
 
-    def add_client(self, server_wxid, client_wxid):
-        recMsg = ''
-        if client_wxid not in self.baseHash:
-            client_x = Client()
-            client_x.ID = client_wxid
-            client_x.permission = 2
+    def add_client(self, client_wxid):
+        # 初始化一个用户
+        client_x = Client()
+        client_x.id = client_wxid
+        client_x.cl = 2
+        client_x.orderList = []
 
-            self.baseHash[client_wxid] = client_x
+        # 将用户添加到哈希表
+        self.storageHash[client_x.id] = client_x
+
+        # 产生提示信息
+        recMsg = "添加用户[{}]成功".format(client_wxid)
+        return recMsg
+
+    def sub_client(self, client_wxid):
+        # 将用户删除从哈希表
+        self.storageHash.pop(client_wxid)
+
+        # 产生提示信息
+        recMsg = "删除用户[{}]成功".format(client_wxid)
+        return recMsg
+
+    def add_order(self, server_wxid, client_wxid, odid):
+        server_x = self.storageHash[server_wxid]
+        client_x = self.storageHash[client_wxid]
+
+        order_x = OrderFrom()
+        order_x.id = odid
+        order_x.cl = 3
+        order_x.serverID = server_x.id
+        order_x.clientID = client_x.id
+        order_x.lastNums = len(server_x.orderList)
+        order_x.lastTime = (len(server_x.orderList) + 1) * 2
+        order_x.beginTime = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+        order_x.state = 1
+
+        server_x.orderList.append(order_x.id)
+        client_x.orderList.append(order_x.id)
+        self.dynamicHash[order_x.id] = order_x
+
+        recMsg = "客户[{}]在商家[{}]添加订单[{}]成功\n".format(
+            server_x.id,
+            client_x.id,
+            order_x.id)
+        return recMsg
+
+    def sub_order(self, wxid, index=None):
+        order_del = None
+        base_x = self.storageHash[wxid]
+        if base_x.cl == 1:
+            order_del_id = base_x.orderList.pop(0)
+            order_del = self.dynamicHash[order_del_id]
+            order_del.state = 2
+            for order_del_id in base_x.orderList:
+                self.dynamicHash[order_del_id].lastNums -= 1
+                self.dynamicHash[order_del_id].lastTime -= order_del.lastTime
+            order_del.lastTime = 0
+            recMsg = '商家完成订单'
+        elif base_x.cl == 2:
+            order_del_id = base_x.orderList.pop(index)
+            order_del = self.dynamicHash[order_del_id]
+            order_del.state = 0
+
+            server_x = self.storageHash[order_del.serverID]
+            for i in range(len(server_x.orderList)):
+                if order_del_id == self.dynamicHash[server_x.orderList[i]].id:
+                    server_x.orderList.pop(i)
+                    for j in range(i, len(server_x.orderList)):
+                        self.dynamicHash[server_x.orderList[j]].lastNums -= 1
+                        self.dynamicHash[server_x.orderList[j]].lastTime -= order_del.lastTime
+                    break
+            order_del.lastTime = 0
+            recMsg = '客户删除订单'
         else:
-            client_x = self.baseHash[client_wxid]
+            recMsg = '铁拳删除订单'
 
-        server_x = self.baseHash[server_wxid]
-        server_x.add_client(client_x)
-
-        recMsg = "在[{}]添加客户[{}]成功".format(server_wxid, client_wxid)
-        return recMsg
-
-    def sub_client(self, wxid):
-        recMsg = ''
-        dele_wxid = None
-        item = self.baseHash[wxid]
-        if item.permission == 1:
-            dele_wxid = item.sub_client(None)
-            recMsg = '商家删除'
-        elif item.permission == 2:
-            server_x = self.baseHash[item.serverID]
-            dele_wxid = server_x.sub_client(wxid)
-            recMsg = '客户删除'
-        self.__sub_base(dele_wxid)
-        recMsg = '完成'
+        self.orderFromRecord[order_del.id] = order_del
+        self.dynamicHash.pop(order_del.id)
         return recMsg
 
     def show_info(self, wxid):
+        base = self.storageHash[wxid]
         recMsg = ''
-        if wxid in self.baseHash:
-            item = self.baseHash[wxid]
-            recMsg = item.show_info()
-        else:
-            recMsg += '{}\n'.format('=' * 20)
-            recMsg += 'ID:{}\n'.format("not in hash")
+        recMsg += '{}\n'.format('=' * 40)
+        for order_id in base.orderList:
+            if order_id in self.dynamicHash:
+                order_x = self.dynamicHash[order_id]
+                recMsg += order_x.show_info()
+            elif order_id in self.orderFromRecord:
+                order_x = self.orderFromRecord[order_id]
+                recMsg += order_x.show_info()
         return recMsg
 
     def show_help(self):
@@ -131,10 +165,10 @@ class Control:
         1、添加商家
         2、减少商家
         3、添加客户
-        4、减少客户（商家）
-        5、减少客户（客户）
-        6、显示info（商家）
-        7、显示info（客户）
+        4、减少客户
+        5、增加订单（商家id、用户id、单号）
+        6、取消/完成订单（id、（用户需要下标））
+        7、显示info（id）
         """
         return recMsg
 
@@ -144,30 +178,24 @@ def main():
     ct = Control()
     ct.add_server(10)
     ct.add_server(11)
-    ct.add_server(12)
 
-    # 向商家中添加客户
-    ct.add_client(10, 20)
-    ct.add_client(10, 21)
-    ct.add_client(10, 22)
-    # print(ct.show_info(10))
-    # print(ct.show_info(20))
-    # print(ct.show_info(21))
-    # print(ct.show_info(22))
+    # 初始化客户
+    ct.add_client(20)
+    ct.add_client(21)
+    ct.add_client(22)
 
-    # 商家减少客户
-    # ct.sub_client(10)
-    # print(ct.show_info(10))
-    # print(ct.show_info(20))
-    # print(ct.show_info(21))
-    # print(ct.show_info(22))
+    # 向单个商家中添加订单
+    ct.add_order(10, 20, 0)
+    ct.add_order(10, 21, 1)
+    ct.add_order(10, 22, 2)
 
-    # 客户减少客户
-    # ct.sub_client(21)
-    # print(ct.show_info(10))
-    # print(ct.show_info(20))
-    # print(ct.show_info(21))
-    # print(ct.show_info(22))
+    print(ct.show_info(10))
+
+    # ct.sub_order(10)  # 商家完成订单
+    ct.sub_order(21, 0)  # 用户删除订单
+
+    # print(ct.show_info(10))  #显示商家信息
+    print(ct.show_info(22))  # 显示用户信息
 
 
 if __name__ == '__main__':

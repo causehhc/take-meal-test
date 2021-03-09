@@ -59,14 +59,18 @@ class Handle(object):
                     elif recMsg.Content == bytes('2', encoding="utf8"):
                         content = ct.sub_server('10')
                     elif recMsg.Content == bytes('3', encoding="utf8"):
-                        content = ct.add_client('10', toUser)
+                        content = ct.add_client(toUser)
                     elif recMsg.Content == bytes('4', encoding="utf8"):
-                        content = ct.sub_client('10')
-                    elif recMsg.Content == bytes('5', encoding="utf8"):
                         content = ct.sub_client(toUser)
+                    elif recMsg.Content == bytes('5', encoding="utf8"):
+                        content = ct.add_order('10', toUser, 0)
                     elif recMsg.Content == bytes('6', encoding="utf8"):
-                        content = ct.show_info('10')
+                        content = ct.sub_order('10')
                     elif recMsg.Content == bytes('7', encoding="utf8"):
+                        content = ct.sub_order(toUser, 0)
+                    elif recMsg.Content == bytes('8', encoding="utf8"):
+                        content = ct.show_info('10')
+                    elif recMsg.Content == bytes('9', encoding="utf8"):
                         content = ct.show_info(toUser)
                     else:
                         content = ct.show_help()
